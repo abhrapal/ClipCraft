@@ -1,7 +1,7 @@
 # ClipCraft — Stories & Stanza
 
-A local web app that turns long-form video recordings into short-form, portrait-oriented social media reels.  
-Upload a video + SRT subtitle file, pick your cues, generate clips, then publish directly to YouTube — all from one browser tab.
+A local web app that turns long-form video and audio into short-form, portrait-oriented social media reels.  
+Three tools in one browser tab: generate subtitle-driven clips from a video, convert any full video to portrait, or build sequential audio reels from a static image — then publish directly to YouTube.
 
 ---
 
@@ -17,11 +17,13 @@ Upload a video + SRT subtitle file, pick your cues, generate clips, then publish
 8. [API Reference](#api-reference)
 9. [Configuration](#configuration)
 10. [Troubleshooting](#troubleshooting)
+11. [Changelog](#changelog)
 
 ---
 
 ## Features
 
+### Clip Generator (/)
 - **Portrait clip generation** — auto-converts landscape video to 1080×1920 (9:16) with side-by-side speaker layout
 - **Subtitle-aware cutting** — clips snap to SRT cue boundaries so they never cut off mid-sentence
 - **Auto-mode** — splits a video into equal windows snapped to the nearest subtitle cue; no manual selection needed
@@ -32,9 +34,27 @@ Upload a video + SRT subtitle file, pick your cues, generate clips, then publish
 - **Gallery** — preview, play, and manage all generated clips in the browser
 - **YouTube bulk upload** — select multiple clips, set per-clip titles, shared description, and staggered publish schedule
 
+### Portrait Converter (/convert) — *New*
+- **Full-video portrait conversion** — converts an entire landscape video to 9:16 in one step (no cue selection needed)
+- **Side-by-side speaker layout** — configurable split ratio (left/right speaker weight)
+- **Optional SRT subtitles** — attach an SRT file to burn subtitles into the converted video
+- **One-click download** — result clip appears in the output area with a direct download link
+
+### Audio Clip Generator (/audioclips) — *New*
+- **Image + audio → video reels** — combine a static portrait image with an audio file to produce sequential MP4 clips
+- **Flexible slicing** — configure number of clips, clip duration (seconds), and start offset into the audio
+- **Live preview** — duration preview updates in real time as settings change
+- **Per-clip live downloads** — each clip becomes downloadable as soon as it finishes, without waiting for the full batch
+
+### Navigation UX — *Improved*
+- Sidebar restructured into a **Tools** section (cross-page links) and a **Workflow** section (numbered step dots with active/done progression)
+- Step dots animate: completed steps turn green ✓, the active step highlights in brand colour
+
 ---
 
 ## How It Works
+
+### Clip Generator
 
 ```
 Video + SRT + Thumbnail
@@ -71,6 +91,55 @@ Video + SRT + Thumbnail
    │     • Resumable MediaFileUpload (256 KB chunks)   │
    │     • Polled via /youtube/upload_progress/<id>    │
    └──────────────────────────────────────────────────┘
+```
+
+### Portrait Converter
+
+```
+Video (+ optional SRT)
+        │
+   ┌────▼──────────────────────────────┐
+   │  POST /convert/upload             │
+   │  • Saves video + SRT to uploads/  │
+   └────┬──────────────────────────────┘
+        │  POST /convert/start
+   ┌────▼──────────────────────────────┐
+   │  Background job (Flask thread)    │
+   │  • make_portrait_full_video()     │
+   │    – full landscape → 9:16 crop   │
+   │    – optional SRT burn-in         │
+   │  • Output saved to clips/         │
+   └────┬──────────────────────────────┘
+        │  polled via /progress/<id>
+   ┌────▼──────────────────────────────┐
+   │  Download result clip             │
+   └───────────────────────────────────┘
+```
+
+### Audio Clip Generator
+
+```
+Static Image + Audio file
+        │
+   ┌────▼──────────────────────────────┐
+   │  POST /audioclips/upload          │
+   │  • Saves image + audio to uploads/│
+   └────┬──────────────────────────────┘
+        │  POST /audioclips/start
+   ┌────▼──────────────────────────────┐
+   │  Background job (Flask thread)    │
+   │  For each clip i:                 │
+   │  • make_audio_reel()              │
+   │    – scale image to 9:16 canvas   │
+   │    – slice audio[start..end]      │
+   │    – combine → MP4                │
+   │  • Clip available for download    │
+   │    immediately after each batch   │
+   └────┬──────────────────────────────┘
+        │  polled via /progress/<id>
+   ┌────▼──────────────────────────────┐
+   │  Per-clip live download links     │
+   └───────────────────────────────────┘
 ```
 
 ---
@@ -123,7 +192,9 @@ gunicorn -w 2 -b 0.0.0.0:8080 app:app
 
 ## Usage Guide
 
-### Step 1 — Upload
+### Clip Generator (/)
+
+#### Step 1 — Upload
 
 Drop or select three files:
 
@@ -133,7 +204,7 @@ Drop or select three files:
 | Subtitles | ✓ | `.srt` or `.txt` in SRT format |
 | Thumbnail | optional | `.png`, `.jpg`, `.jpeg`, `.webp` — prepended to each clip |
 
-### Step 2 — Cues
+#### Step 2 — Cues
 
 Configure generation settings, then choose clip sources:
 
@@ -148,7 +219,7 @@ Configure generation settings, then choose clip sources:
 
 **Manual mode**: tick individual SRT cue rows, then click **Create Clips**.
 
-### Step 3 — Generation
+#### Step 3 — Generation
 
 A progress bar tracks the background job. Each clip goes through:
 
@@ -156,9 +227,38 @@ A progress bar tracks the background job. Each clip goes through:
 2. `ffmpeg_prepend.py` → `prepend_thumbnail()` — thumbnail prepend
 3. `ffmpeg_prepend.py` → `append_outro()` — outro append from `ClipOutro.mp4`
 
-### Step 4 — Gallery
+#### Step 4 — Gallery
 
 All generated clips are listed as cards. Click any card to play the clip in the browser. Hit **Refresh** to reload clips generated in previous sessions.
+
+---
+
+### Portrait Converter (/convert)
+
+1. **Upload** — Drop a video file (required) and an optional SRT subtitle file
+2. **Configure** — Adjust the left/right speaker split ratio using the visual slider; the diagram updates live
+3. **Convert** — Click **Convert to Portrait**; a progress bar tracks the job
+4. **Download** — When complete, a download button appears with the output file
+
+> The converted file is also available in the main **Gallery** via `/clips/list`.
+
+---
+
+### Audio Clip Generator (/audioclips)
+
+1. **Upload** — Drop a portrait image (PNG/JPG/WEBP) and an audio file (MP3/WAV/M4A/AAC/OGG)
+2. **Configure** settings:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Number of clips | 3 | How many sequential clips to generate (1–50) |
+| Clip duration | 60 s | Length of each clip in seconds (min 5 s) |
+| Start offset | 0 s | Skip this many seconds before the first clip |
+
+The **Duration preview** (e.g. `60s × 3 clips = 3m 0s total`) updates live.
+
+3. **Generate** — Click **Generate Audio Clips**; each clip appears as a download link as soon as it finishes, without waiting for the full batch
+4. **Download** — Use the per-clip download buttons or wait for all to finish
 
 ---
 
@@ -191,9 +291,9 @@ In the **▶ YouTube** tab, click **Connect channel** and complete the Google si
 ## Project Structure
 
 ```
-Social Media Clips/
+Clip Generator/
 ├── app.py                  # Flask server — routes, job orchestration, YouTube OAuth
-├── moviepy_worker.py       # Portrait clip rendering (crop, layout, subtitle burn-in)
+├── moviepy_worker.py       # Portrait clip rendering, full-video converter, audio reel builder
 ├── ffmpeg_prepend.py       # ffmpeg wrappers: thumbnail prepend, outro append
 ├── utils.py                # Shared utility helpers
 ├── requirements.txt        # Python dependencies
@@ -203,16 +303,18 @@ Social Media Clips/
 ├── .yt_oauth_state         # Ephemeral PKCE state (auto-created — not committed)
 ├── ClipOutro.mp4           # Outro video appended to every clip (you provide)
 │
-├── uploads/                # Temporary storage for uploaded videos, SRTs, thumbnails
-├── clips/                  # Generated output clips (MP4) and thumbnails (JPG)
+├── uploads/                # Temporary storage for uploaded videos, SRTs, images, audio
+├── clips/                  # Generated output clips (MP4)
 │
 ├── static/
-│   ├── css/app.css         # Full design system — dark navy theme, component styles
-│   ├── js/app.js           # All frontend logic (upload, cues, gallery, YouTube)
+│   ├── css/app.css         # Full design system — dark navy theme, component styles, nav step dots
+│   ├── js/app.js           # Clip Generator frontend logic (upload, cues, gallery, YouTube)
 │   └── Logo.png            # Stories & Stanza brand logo
 │
 └── templates/
-    └── index.html          # Single-page app shell
+    ├── index.html          # Clip Generator page
+    ├── convert.html        # Portrait Converter page  ← new
+    └── audioclips.html     # Audio Clip Generator page  ← new
 ```
 
 ---
@@ -256,11 +358,61 @@ Social Media Clips/
 {
   "status": "running | done | error | cancelled",
   "percent": 60,
-  "clips": [{ "clip": "filename.mp4", "thumbnail": "filename.jpg" }],
+  "clips": [{ "clip": "filename.mp4" }],
   "errors": [],
   "finished": false
 }
 ```
+
+---
+
+### Portrait Converter
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /convert` | — | Render the Portrait Converter page. |
+| `POST /convert/upload` | multipart/form-data | Upload video (required) + optional SRT. Returns file tokens. |
+| `POST /convert/start` | JSON | Start full-video portrait conversion job. Returns `job_id`. |
+
+#### `POST /convert/start` body
+
+```json
+{
+  "video": "token.mp4",
+  "srt": "token.srt",
+  "split_x_ratio": 0.5
+}
+```
+
+`srt` is optional. `split_x_ratio` controls where the left/right speaker boundary falls (0.1–0.9, default 0.5).
+
+---
+
+### Audio Clip Generator
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `GET /audioclips` | — | Render the Audio Clip Generator page. |
+| `POST /audioclips/upload` | multipart/form-data | Upload image + audio. Returns file tokens. |
+| `POST /audioclips/start` | JSON | Start batch audio-reel generation job. Returns `job_id`. |
+
+#### `POST /audioclips/start` body
+
+```json
+{
+  "image": "token.png",
+  "audio": "token.mp3",
+  "num_clips": 3,
+  "clip_duration": 60,
+  "start_offset": 0
+}
+```
+
+- `num_clips` — 1–50 (default 3)
+- `clip_duration` — seconds per clip, minimum 5 (default 60)
+- `start_offset` — seconds to skip before the first clip (default 0)
+
+---
 
 ### YouTube
 
@@ -328,3 +480,28 @@ Ensure `http://localhost:8080/youtube/callback` is listed exactly in your Google
 
 **Scheduled uploads fail**  
 YouTube requires the channel to be in good standing for scheduled uploads. The `scheduled_at` timestamp must be at least 10 minutes in the future and in RFC 3339 UTC format.
+
+---
+
+## Changelog
+
+### 2026-04-16
+
+#### New Features
+- **Portrait Converter** (`/convert`) — convert any full landscape video to 9:16 portrait in one step, with optional SRT subtitle burn-in and configurable speaker split ratio
+- **Audio Clip Generator** (`/audioclips`) — combine a static portrait image with an audio file to produce sequential MP4 reels; supports configurable number of clips, clip duration, and start offset; each clip becomes downloadable as soon as it renders
+- **Live nav step progression** — sidebar Workflow steps now animate: completed steps show a green checkmark, the active step highlights in brand colour
+
+#### Bug Fixes
+- **Pillow 10+ compatibility** — replaced deprecated `Image.ANTIALIAS` with `Image.LANCZOS` in MoviePy's resize helper
+- **Pillow 10+ text measurement** — replaced all `draw.textsize()` calls with `draw.textbbox()` in `moviepy_worker.py` (10 call-sites) to fix `AttributeError` on Python 3.12+
+- **Double subtitle rendering** — eliminated duplicate caption layers; each subtitle frame now renders all words on a single transparent overlay
+
+#### Internal Changes
+- Added `make_portrait_full_video()` and `make_audio_reel()` to `moviepy_worker.py`
+- Added `background_convert_video()` and `background_audio_clips()` background workers to `app.py`
+- Added `ALLOWED_AUDIO_EXT` and `ALLOWED_SRT_EXT` extension sets to `app.py`
+- Added `AudioFileClip` import to `moviepy_worker.py`
+- New templates: `templates/convert.html`, `templates/audioclips.html`
+- New CSS utilities: `.nav-section-label`, `.nav-divider`, `.nav-step`, `.step-dot` (with `.active` / `.done` states)
+- `static/js/app.js`: added `navUpload` reference, rewrote `setNavActive()` with linear done/active progression, added `navUpload` click handler, fixed `newJobBtn` reset to call `setNavActive('upload')`
