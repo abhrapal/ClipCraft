@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Portrait Converter — Stories and Stanza</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    .split-preview {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-top: 10px;
+    }
+    .split-diagram {
+      flex-shrink: 0;
+      display: flex;
+      gap: 4px;
+    }
+    .split-box {
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #041728;
+      transition: width 0.15s;
+    }
+    .split-box.left  { background: var(--accent); height: 48px; }
+    .split-box.right { background: var(--accent-dark); height: 48px; }
+    .split-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 20px;
+    }
+    .portrait-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .portrait-box {
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #041728;
+      width: 64px;
+      height: 36px;
+    }
+    .portrait-box.top    { background: var(--accent); }
+    .portrait-box.bottom { background: var(--accent-dark); }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .result-icon { font-size: 36px; line-height: 1; }
+    .result-info { flex: 1; min-width: 0; }
+    .result-filename {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .result-meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .result-actions { display: flex; gap: 10px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-parent">
+        <img src="{{ url_for('static', filename='Logo.png') }}" alt="Stories and Stanza" class="brand-logo" />
+        <span class="brand-parent-name">Stories &amp; Stanza</span>
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-clip">
+        <span class="brand-icon">✦</span>
+        <span class="brand-name">ClipCraft</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Tools</div>
+      <a class="nav-item" href="/">
+        <span class="nav-icon">⬆</span> Clip Generator
+      </a>
+      <a class="nav-item active" href="/convert">
+        <span class="nav-icon">⬛</span> Portrait Converter
+      </a>
+      <a class="nav-item" href="/audioclips">
+        <span class="nav-icon">🎵</span> Audio Clip Generator
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-status" id="sidebarStatus"></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- Upload -->
+    <section class="step-section" id="stepUpload">
+      <div class="section-header">
+        <div class="section-badge">Step 1</div>
+        <h2 class="section-title">Upload Video</h2>
+        <p class="section-desc">Upload a horizontal video to convert the entire file to 9:16 portrait format. Left half goes to the top, right half to the bottom.</p>
+      </div>
+
+      <div class="upload-grid" style="grid-template-columns: 1fr 1fr;">
+        <label class="dropzone" id="dropzoneVideo" for="videoInput">
+          <div class="dropzone-icon">🎬</div>
+          <div class="dropzone-label">Video</div>
+          <div class="dropzone-hint">MP4, MOV, MKV, WEBM, AVI</div>
+          <input id="videoInput" type="file" accept="video/*" class="file-input" />
+          <div id="videoNameDisplay" class="dropzone-filename hidden"></div>
+        </label>
+
+        <label class="dropzone optional" id="dropzoneSrt" for="srtInput">
+          <div class="dropzone-icon">💬</div>
+          <div class="dropzone-label">Transcript <span class="optional-tag">optional</span></div>
+          <div class="dropzone-hint">SRT subtitle file — embeds captions</div>
+          <input id="srtInput" type="file" accept=".srt,text/plain" class="file-input" />
+          <div id="srtNameDisplay" class="dropzone-filename hidden"></div>
+        </label>
+      </div>
+
+      <div class="upload-actions">
+        <button id="uploadBtn" class="btn btn-primary" disabled>
+          <span class="btn-icon">⬆</span> Upload
+        </button>
+        <div id="uploadStatus" class="status-text"></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="step-section hidden" id="stepSettings">
+      <div class="section-header">
+        <div class="section-badge">Step 2</div>
+        <h2 class="section-title">Settings <span class="filename-badge" id="videoNameShort"></span></h2>
+        <p class="section-desc">Adjust the split point between left and right speakers.</p>
+      </div>
+
+      <div class="settings-bar">
+        <div class="settings-group" style="flex:1; max-width:300px;">
+          <label class="settings-label" for="splitRatio">Split point (% from left)</label>
+          <input id="splitRatio" type="range" min="10" max="90" value="50" step="1"
+                 style="width:100%; accent-color: var(--accent);" />
+          <span id="splitRatioVal" style="font-size:12px; color:var(--accent); font-weight:600;">50%</span>
+        </div>
+      </div>
+
+      <!-- Visual diagram -->
+      <div class="split-preview">
+        <div>
+          <div class="settings-label" style="margin-bottom:6px;">Source (horizontal)</div>
+          <div class="split-diagram">
+            <div class="split-box left" id="diagramLeft" style="width:80px;">Left</div>
+            <div class="split-box right" id="diagramRight" style="width:80px;">Right</div>
+          </div>
+        </div>
+        <div class="split-arrow">→</div>
+        <div>
+          <div class="settings-label" style="margin-bottom:6px;">Output (9:16 portrait)</div>
+          <div class="portrait-diagram">
+            <div class="portrait-box top">Top (Left)</div>
+            <div class="portrait-box bottom">Bottom (Right)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="create-bar" style="margin-top:24px;">
+        <button id="convertBtn" class="btn btn-primary btn-lg">
+          <span class="btn-icon">⚡</span> Convert to Portrait
+        </button>
+        <div id="convertStatus" class="status-text"></div>
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section class="step-section hidden" id="stepProgress">
+      <div class="section-header">
+        <div class="section-badge">Converting</div>
+        <h2 class="section-title">Converting Video</h2>
+        <p class="section-desc">Please wait — this may take a few minutes for long videos.</p>
+      </div>
+      <div class="progress-card">
+        <div class="progress-header">
+          <span id="progressText" class="progress-label">Processing…</span>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill" style="width:0%; transition: width 0.4s;"></div>
+        </div>
+        <div id="progressDetail" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section class="step-section hidden" id="stepResult">
+      <div class="section-header">
+        <div class="section-badge">Done</div>
+        <h2 class="section-title">Conversion Complete</h2>
+        <p class="section-desc">Your portrait video is ready.</p>
+      </div>
+      <div class="result-card">
+        <div class="result-icon">🎉</div>
+        <div class="result-info">
+          <div class="result-filename" id="resultFilename">—</div>
+          <div class="result-meta">9:16 portrait · 1080 × 1920</div>
+        </div>
+        <div class="result-actions">
+          <a id="resultDownload" href="#" class="btn btn-primary" download>
+            <span class="btn-icon">⬇</span> Download
+          </a>
+          <button id="convertAnotherBtn" class="btn btn-ghost">Convert another</button>
+        </div>
+      </div>
+      <div id="errorList" class="clip-log" style="margin-top:16px;" role="list"></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  /* ── utilities ── */
+  const $ = id => document.getElementById(id);
+  function showSection(id) {
+    ['stepUpload','stepSettings','stepProgress','stepResult'].forEach(s => {
+      $( s).classList.toggle('hidden', s !== id);
+    });
+  }
+  function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    $('toastContainer').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  /* ── state ── */
+  let uploadedVideo = null;
+  let uploadedSrt   = null;
+  let pollTimer = null;
+
+  /* ── file inputs ── */
+  $('videoInput').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const dz = $('dropzoneVideo');
+    const nm = $('videoNameDisplay');
+    dz.classList.add('filled');
+    nm.textContent = f.name;
+    nm.classList.remove('hidden');
+    $('uploadBtn').disabled = false;
+  });
+
+  $('srtInput').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    $('dropzoneSrt').classList.add('filled');
+    $('srtNameDisplay').textContent = f.name;
+    $('srtNameDisplay').classList.remove('hidden');
+  });
+
+  /* drag-and-drop on video dropzone */
+  const dz = $('dropzoneVideo');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    $('videoInput').files = e.dataTransfer.files;
+    $('videoInput').dispatchEvent(new Event('change'));
+  });
+
+  /* ── upload ── */
+  $('uploadBtn').addEventListener('click', async () => {
+    const file = $('videoInput').files[0];
+    if (!file) return;
+    $('uploadBtn').disabled = true;
+    $('uploadStatus').textContent = 'Uploading…';
+    $('uploadStatus').className = 'status-text';
+    const fd = new FormData();
+    fd.append('video', file);
+    const srtFile = $('srtInput').files[0];
+    if (srtFile) fd.append('srt', srtFile);
+    try {
+      const res = await fetch('/convert/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      uploadedVideo = data.video;
+      uploadedSrt   = data.srt || null;
+      $('videoNameShort').textContent = data.original_name || data.video;
+      $('uploadStatus').textContent = '';
+      showSection('stepSettings');
+    } catch (err) {
+      $('uploadStatus').textContent = 'Error: ' + err.message;
+      $('uploadStatus').className = 'status-text error';
+      $('uploadBtn').disabled = false;
+    }
+  });
+
+  /* ── split ratio slider ── */
+  $('splitRatio').addEventListener('input', () => {
+    const v = $('splitRatio').value;
+    $('splitRatioVal').textContent = v + '%';
+    const total = 160;
+    $('diagramLeft').style.width  = Math.round(total * v / 100) + 'px';
+    $('diagramRight').style.width = Math.round(total * (100 - v) / 100) + 'px';
+  });
+
+  /* ── convert ── */
+  $('convertBtn').addEventListener('click', async () => {
+    if (!uploadedVideo) return;
+    $('convertBtn').disabled = true;
+    $('convertStatus').textContent = '';
+    showSection('stepProgress');
+    const splitRatio = parseFloat($('splitRatio').value) / 100;
+    try {
+      const res = await fetch('/convert/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ video: uploadedVideo, srt: uploadedSrt, split_x_ratio: splitRatio }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start');
+      startPolling(data.job_id);
+    } catch (err) {
+      toast('Error: ' + err.message, 'error');
+      showSection('stepSettings');
+      $('convertBtn').disabled = false;
+    }
+  });
+
+  /* ── polling ── */
+  let elapsed = 0;
+  function startPolling(jobId) {
+    elapsed = 0;
+    if (pollTimer) clearInterval(pollTimer);
+    // Animate a fake progress bar since conversion is one long operation
+    pollTimer = setInterval(async () => {
+      elapsed += 1.2;
+      try {
+        const res = await fetch(`/progress/${jobId}`);
+        if (!res.ok) return;
+        const p = await res.json();
+
+        if (p.finished) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          $('progressFill').style.width = '100%';
+          if (p.status === 'error' || (p.errors && p.errors.length && !p.clips.length)) {
+            toast('Conversion failed', 'error');
+            showSection('stepSettings');
+            $('convertBtn').disabled = false;
+            return;
+          }
+          // success
+          const clip = (p.clips[0] || {}).clip || '';
+          $('resultFilename').textContent = clip;
+          $('resultDownload').href = `/clips/${encodeURIComponent(clip)}`;
+          $('resultDownload').setAttribute('download', clip);
+          // show any non-fatal errors
+          $('errorList').innerHTML = '';
+          (p.errors || []).forEach(e => {
+            const li = document.createElement('li');
+            li.className = 'error';
+            li.textContent = e.error;
+            $('errorList').appendChild(li);
+          });
+          showSection('stepResult');
+          toast('Conversion complete!', 'success');
+        } else {
+          // fake smooth progress up to 95% while running
+          const fakePercent = Math.min(95, Math.round(elapsed / 0.6));
+          $('progressFill').style.width = fakePercent + '%';
+          $('progressDetail').textContent = `Running… (${Math.round(elapsed)}s)`;
+        }
+      } catch (_) {}
+    }, 1200);
+  }
+
+  /* ── convert another ── */
+  $('convertAnotherBtn').addEventListener('click', () => {
+    uploadedVideo = null;
+    uploadedSrt   = null;
+    $('videoInput').value = '';
+    $('srtInput').value = '';
+    $('videoNameDisplay').textContent = '';
+    $('videoNameDisplay').classList.add('hidden');
+    $('srtNameDisplay').textContent = '';
+    $('srtNameDisplay').classList.add('hidden');
+    $('dropzoneVideo').classList.remove('filled');
+    $('dropzoneSrt').classList.remove('filled');
+    $('uploadBtn').disabled = true;
+    $('progressFill').style.width = '0%';
+    $('progressDetail').textContent = '';
+    showSection('stepUpload');
+  });
+</script>
+</body>
+</html>

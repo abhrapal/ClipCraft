@@ -1,0 +1,32 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.envrc
+
+# Sensitive credentials — never commit these
+client_secrets.json
+yt_credentials.json
+.yt_oauth_state
+
+# App-generated files
+uploads/
+clips/
+thumbs/
+
+# Temporary MoviePy/ffmpeg working files
+*TEMP_MPY_wvf_snd.mp4
+*.withoutro.mp4
+*.withthumb.mp4
+
+# macOS
+.DS_Store

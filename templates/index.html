@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ClipCraft — Stories and Stanza</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-parent">
+        <img src="{{ url_for('static', filename='Logo.png') }}" alt="Stories and Stanza" class="brand-logo" />
+        <span class="brand-parent-name">Stories &amp; Stanza</span>
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-clip">
+        <span class="brand-icon">✦</span>
+        <span class="brand-name">ClipCraft</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Tools</div>
+      <a class="nav-item active" href="/">
+        <span class="nav-icon">⬆</span> Clip Generator
+      </a>
+      <a class="nav-item" href="/convert">
+        <span class="nav-icon">⬛</span> Portrait Converter
+      </a>
+      <a class="nav-item" href="/audioclips">
+        <span class="nav-icon">🎵</span> Audio Clip Generator
+      </a>
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Workflow</div>
+      <a class="nav-item nav-step active" href="#step-upload" id="navUpload">
+        <span class="step-dot">1</span> Upload
+      </a>
+      <a class="nav-item nav-step" href="#step-cues" id="navCues">
+        <span class="step-dot">2</span> Select Cues
+      </a>
+      <a class="nav-item nav-step" href="#step-gallery" id="navGallery">
+        <span class="step-dot">3</span> Gallery
+      </a>
+      <div class="nav-divider"></div>
+      <a class="nav-item" href="#step-youtube" id="navYouTube">
+        <span class="nav-icon">▶</span> YouTube
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-status" id="sidebarStatus"></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- ── Step 1: Upload ── -->
+    <section class="step-section" id="step-upload">
+      <div class="section-header">
+        <div class="section-badge">Step 1</div>
+        <h2 class="section-title">Upload Files</h2>
+        <p class="section-desc">Add your video, subtitle file, and an optional thumbnail image.</p>
+      </div>
+
+      <form id="uploadForm" enctype="multipart/form-data">
+        <div class="upload-grid">
+
+          <label class="dropzone" id="dropzoneVideo" for="videoInput">
+            <div class="dropzone-icon">🎬</div>
+            <div class="dropzone-label">Video</div>
+            <div class="dropzone-hint">MP4, MOV, MKV, WEBM</div>
+            <input id="videoInput" name="video" type="file" accept="video/*" class="file-input" />
+            <div id="videoNameDisplay" class="dropzone-filename hidden"></div>
+          </label>
+
+          <label class="dropzone" id="dropzoneSrt" for="srtInput">
+            <div class="dropzone-icon">💬</div>
+            <div class="dropzone-label">Subtitle (SRT)</div>
+            <div class="dropzone-hint">SRT or TXT subtitle file</div>
+            <input id="srtInput" name="srt" type="file" accept=".srt,text/plain" class="file-input" />
+            <div id="srtNameDisplay" class="dropzone-filename hidden"></div>
+          </label>
+
+          <label class="dropzone optional" id="dropzoneThumb" for="thumbInput">
+            <div class="dropzone-icon">🖼</div>
+            <div class="dropzone-label">Thumbnail <span class="optional-tag">optional</span></div>
+            <div class="dropzone-hint">PNG, JPG, WEBP</div>
+            <input id="thumbInput" name="thumbnail" type="file" accept="image/*" class="file-input" />
+            <div id="thumbNameDisplay" class="dropzone-filename hidden"></div>
+          </label>
+
+        </div>
+
+        <div class="upload-actions">
+          <button type="submit" class="btn btn-primary" id="uploadBtn">
+            <span class="btn-icon">⬆</span> Upload &amp; Parse
+          </button>
+          <div id="uploadStatus" class="status-text"></div>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Step 2: Cues ── -->
+    <section class="step-section hidden" id="step-cues">
+      <div class="section-header">
+        <div class="section-badge">Step 2</div>
+        <h2 class="section-title">Select Cues <span class="filename-badge" id="videoNameShort"></span></h2>
+        <p class="section-desc">Choose specific subtitle cues or use Auto-generate to let the system pick evenly spaced segments.</p>
+      </div>
+
+      <!-- Settings bar -->
+      <div class="settings-bar">
+        <div class="settings-group">
+          <label class="settings-label" for="maxClips">Max clips</label>
+          <select id="maxClips" class="settings-input settings-select">
+            <option>1</option>
+            <option>2</option>
+            <option selected>3</option>
+            <option>5</option>
+            <option>10</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="autoWindow">Clip length (s)</label>
+          <input id="autoWindow" type="number" min="10" max="300" value="45" class="settings-input" />
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="autoMin">Min duration (s)</label>
+          <input id="autoMin" type="number" min="5" max="300" value="30" class="settings-input" />
+        </div>
+
+        <div class="settings-group">
+          <label class="settings-label" for="maxDuration">Max duration (s)</label>
+          <input id="maxDuration" type="number" min="10" max="600" value="60" class="settings-input" />
+        </div>
+
+        <div class="settings-toggle">
+          <label class="toggle-label" for="autoNoteToggle">
+            <input id="autoNoteToggle" type="checkbox" checked class="toggle-input" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">Auto-generate</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Cue list -->
+      <div class="cue-panel">
+        <div class="cue-panel-header">
+          <span class="cue-count-label">Cues <span id="selectedCount" class="cue-count-badge">0</span> selected</span>
+          <div class="cue-actions">
+            <button class="btn btn-ghost btn-sm" id="selectAllBtn">Select all</button>
+            <button class="btn btn-ghost btn-sm" id="clearAllBtn">Clear</button>
+          </div>
+        </div>
+        <ul id="cueList" class="cue-list" role="list"></ul>
+      </div>
+
+      <div class="create-bar">
+        <button id="createBtn" class="btn btn-primary btn-lg" disabled>
+          <span class="btn-icon">⚡</span> Generate Clips
+        </button>
+        <div id="createStatus" class="status-text"></div>
+      </div>
+    </section>
+
+    <!-- ── Step 3: Progress ── -->
+    <section class="step-section hidden" id="jobPanel">
+      <div class="section-header">
+        <div class="section-badge">Processing</div>
+        <h2 class="section-title">Generating Clips</h2>
+        <p class="section-desc">Please wait while your clips are being created…</p>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-header">
+          <span id="progressText" class="progress-label">0%</span>
+          <button id="cancelBtn" class="btn btn-danger btn-sm">Cancel</button>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <ul id="clipStatus" class="clip-log" role="list"></ul>
+    </section>
+
+    <!-- ── Step 4: Gallery ── -->
+    <section class="step-section hidden" id="step-gallery">
+      <div class="section-header">
+        <div class="section-badge">Gallery</div>
+        <h2 class="section-title">All Clips <span class="clip-count-badge" id="galleryCount"></span></h2>
+        <p class="section-desc">All generated clips — click to preview or open.</p>
+      </div>
+      <div class="gallery-toolbar">
+        <button class="btn btn-ghost btn-sm" id="newJobBtn">← New Job</button>
+        <button class="btn btn-ghost btn-sm" id="refreshGalleryBtn">↻ Refresh</button>
+      </div>
+      <div id="clipsGrid" class="clips-grid"></div>
+      <div id="galleryEmpty" class="gallery-empty hidden">No clips yet — generate some first.</div>
+    </section>
+
+    <!-- ── Step 5: YouTube Upload ── -->
+    <section class="step-section hidden" id="step-youtube">
+      <div class="section-header">
+        <div class="section-badge">YouTube</div>
+        <h2 class="section-title"><span class="yt-icon">▶</span> Publish to YouTube</h2>
+        <p class="section-desc">Connect your channel and schedule or publish clips directly.</p>
+      </div>
+
+      <!-- Auth card -->
+      <div class="yt-auth-card" id="ytAuthCard">
+        <div class="yt-auth-status" id="ytAuthStatus">
+          <span class="spinner" id="ytAuthSpinner"></span>
+          <span id="ytAuthLabel">Checking connection…</span>
+        </div>
+        <div class="yt-auth-actions" id="ytAuthActions"></div>
+      </div>
+
+      <!-- Setup instructions (shown when client_secrets.json is missing) -->
+      <div class="yt-setup-card hidden" id="ytSetupCard">
+        <div class="yt-setup-title">⚙ One-time setup required</div>
+        <ol class="yt-setup-steps">
+          <li>Go to <a href="https://console.cloud.google.com/" target="_blank" class="link">Google Cloud Console</a></li>
+          <li>Create a project → enable <strong>YouTube Data API v3</strong></li>
+          <li>Create <strong>OAuth 2.0 credentials</strong> (Web Application type)</li>
+          <li>Set Authorised redirect URI to <code>http://localhost:8080/youtube/callback</code></li>
+          <li>Download the JSON and save it as <strong>client_secrets.json</strong> in the project root</li>
+          <li>Restart the server, then return here and click <em>Connect channel</em></li>
+        </ol>
+      </div>
+
+      <!-- Upload form -->
+      <div class="yt-upload-form hidden" id="ytUploadForm">
+
+        <!-- ── Clip selector grid ── -->
+        <div class="yt-field">
+          <div class="yt-grid-header">
+            <span class="settings-label">Select clips to upload</span>
+            <div class="yt-grid-actions">
+              <button class="btn btn-ghost btn-sm" id="ytSelectAllBtn">Select all</button>
+              <button class="btn btn-ghost btn-sm" id="ytClearSelBtn">Clear</button>
+              <span class="yt-sel-count hidden" id="ytSelectedCount"><span id="ytSelNum">0</span> selected</span>
+            </div>
+          </div>
+          <div id="ytClipGrid" class="yt-clip-grid"></div>
+          <div id="ytClipGridEmpty" class="gallery-empty hidden">No clips found — generate some first.</div>
+        </div>
+
+        <!-- ── Bulk config panel (shown once ≥1 clip selected) ── -->
+        <div class="yt-bulk-panel hidden" id="ytBulkPanel">
+
+          <div class="yt-bulk-divider">
+            <span>Configure upload</span>
+          </div>
+
+          <!-- Per-clip titles -->
+          <div class="yt-field">
+            <label class="settings-label">Titles per clip</label>
+            <p class="yt-field-hint">Each clip gets its own title. Edit them below.</p>
+            <div id="ytTitleList" class="yt-title-list"></div>
+          </div>
+
+          <!-- Shared description -->
+          <div class="yt-field">
+            <label class="settings-label" for="ytDescription">Description <span class="optional-tag">applied to all</span></label>
+            <textarea id="ytDescription" rows="3" maxlength="5000" placeholder="Enter description…" class="yt-textarea"></textarea>
+          </div>
+
+          <!-- Schedule options -->
+          <div class="yt-field">
+            <label class="settings-label">Publish options</label>
+            <div class="schedule-card">
+              <label class="schedule-option">
+                <input type="radio" name="schedMode" value="now" checked class="schedule-radio" />
+                <div class="schedule-option-inner">
+                  <span class="schedule-option-icon">⚡</span>
+                  <div>
+                    <div class="schedule-option-title">Publish now</div>
+                    <div class="schedule-option-desc">All clips go live immediately as Public</div>
+                  </div>
+                </div>
+              </label>
+              <label class="schedule-option">
+                <input type="radio" name="schedMode" value="later" class="schedule-radio" />
+                <div class="schedule-option-inner">
+                  <span class="schedule-option-icon">🗓</span>
+                  <div>
+                    <div class="schedule-option-title">Schedule for later</div>
+                    <div class="schedule-option-desc">First clip at chosen time — each subsequent clip +1 day apart</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div id="schedDateWrap" class="sched-date-wrap hidden">
+              <div class="sched-date-row">
+                <div class="yt-field" style="flex:1">
+                  <label class="settings-label" for="ytScheduleDate">Date</label>
+                  <input id="ytScheduleDate" type="date" class="settings-input yt-datetime" />
+                </div>
+                <div class="yt-field" style="flex:1">
+                  <label class="settings-label" for="ytScheduleTime">Time</label>
+                  <input id="ytScheduleTime" type="time" class="settings-input yt-datetime" />
+                </div>
+              </div>
+              <p class="yt-field-hint" id="ytTimezoneHint">Your local timezone will be used.</p>
+            </div>
+          </div>
+
+          <!-- Upload action -->
+          <div class="create-bar">
+            <button id="ytUploadBtn" class="btn btn-primary btn-lg">
+              <span class="btn-icon">▶</span> <span id="ytUploadBtnLabel">Upload clips</span>
+            </button>
+            <div id="ytUploadStatus" class="status-text"></div>
+          </div>
+        </div>
+
+        <!-- ── Upload queue (per-clip progress rows) ── -->
+        <div id="ytUploadQueue" class="yt-upload-queue hidden"></div>
+
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

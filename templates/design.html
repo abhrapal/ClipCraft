@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ClipCraft — Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    /* ── Design page overrides ───────────────────────────────── */
+    .ds-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .ds-sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 24px 0;
+    }
+    .ds-sidebar-brand {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .ds-sidebar-brand .b1 {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .ds-sidebar-brand img { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; }
+    .ds-sidebar-brand .parent-label { font-size: 11px; font-weight: 600; color: var(--muted); }
+    .ds-sidebar-brand .app-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .ds-sidebar-brand .tag {
+      display: inline-block;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .ds-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      padding: 0 10px;
+    }
+    .ds-nav a {
+      display: block;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background 0.12s, color 0.12s;
+    }
+    .ds-nav a:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+    .ds-nav .ds-nav-group {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: rgba(122,154,176,0.5);
+      padding: 14px 10px 4px;
+    }
+
+    .ds-main {
+      flex: 1;
+      padding: 48px 56px;
+      max-width: 860px;
+      overflow-y: auto;
+    }
+
+    /* ── Design system sections ──────────────────────────────── */
+    .ds-section {
+      margin-bottom: 64px;
+      scroll-margin-top: 32px;
+    }
+    .ds-section-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+    .ds-section-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .ds-divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 28px;
+    }
+
+    /* ── Hero ────────────────────────────────────────────────── */
+    .ds-hero {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 56px;
+      padding-bottom: 40px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ds-hero-logo { width: 56px; height: 56px; border-radius: 12px; object-fit: contain; }
+    .ds-hero-title { font-size: 30px; font-weight: 700; letter-spacing: -0.6px; margin-bottom: 4px; }
+    .ds-hero-sub { font-size: 14px; color: var(--muted); }
+
+    /* ── Color swatches ──────────────────────────────────────── */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .swatch {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .swatch-color {
+      height: 64px;
+    }
+    .swatch-info {
+      padding: 10px 12px;
+      background: var(--surface);
+    }
+    .swatch-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+    .swatch-value { font-size: 11px; color: var(--muted); font-family: 'SF Mono', 'Fira Code', monospace; }
+
+    /* ── Type scale ──────────────────────────────────────────── */
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-meta {
+      width: 160px;
+      flex-shrink: 0;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      line-height: 1.6;
+    }
+    .type-meta strong { display: block; font-size: 12px; color: var(--text); font-family: inherit; margin-bottom: 2px; }
+
+    /* ── Component rows ──────────────────────────────────────── */
+    .comp-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+    }
+    .comp-row.dark { background: var(--bg); }
+    .comp-row-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Input demo ──────────────────────────────────────────── */
+    .input-demo { display: flex; flex-direction: column; gap: 16px; }
+    .input-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+    .input-field { display: flex; flex-direction: column; gap: 5px; }
+    .input-field label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .demo-input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 7px 10px;
+      width: 140px;
+    }
+    .demo-input:focus { outline: none; border-color: var(--accent); }
+    .demo-textarea {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 9px 12px;
+      width: 280px;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .demo-textarea:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Nav states ──────────────────────────────────────────── */
+    .nav-demo { display: flex; flex-direction: column; gap: 2px; }
+
+    /* ── Card anatomy ────────────────────────────────────────── */
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .ds-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .ds-card.elevated { background: var(--surface-2); }
+    .ds-card-tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 8px; }
+    .ds-card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .ds-card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* ── Spacing ──────────────────────────────────────────────── */
+    .spacing-grid { display: flex; flex-direction: column; gap: 12px; }
+    .spacing-row { display: flex; align-items: center; gap: 16px; }
+    .spacing-bar { background: var(--accent-dim); border: 1px solid rgba(79,195,247,0.2); border-radius: 3px; height: 20px; flex-shrink: 0; }
+    .spacing-label { font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; color: var(--muted); }
+
+    /* ── Progress demo ───────────────────────────────────────── */
+    .progress-demos { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Toast demo ──────────────────────────────────────────── */
+    .toast-demos { display: flex; flex-direction: column; gap: 8px; max-width: 320px; }
+    .toast-demo {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+    .toast-demo.success { border-color: var(--success); color: var(--success); }
+    .toast-demo.error   { border-color: var(--danger);  color: var(--danger);  }
+
+    /* ── Dropzone demo ───────────────────────────────────────── */
+    .dropzone-demos {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    /* ── Badge demo ──────────────────────────────────────────── */
+    .badge-demos { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .ds-badge {
+      display: inline-block;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .ds-badge.muted { background: rgba(255,255,255,0.05); color: var(--muted); }
+    .ds-badge.success { background: rgba(76,175,145,0.12); color: var(--success); }
+    .ds-badge.danger { background: rgba(242,92,92,0.12); color: var(--danger); }
+
+    /* ── YT clip grid demo ───────────────────────────────────── */
+    .clip-card-demo {
+      width: 160px;
+    }
+
+    /* ── Radius demo ─────────────────────────────────────────── */
+    .radius-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+    .radius-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .radius-label { font-family: 'SF Mono', monospace; font-size: 11px; color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="ds-layout">
+
+  <!-- Design sidebar -->
+  <aside class="ds-sidebar">
+    <div class="ds-sidebar-brand">
+      <div class="b1">
+        <img src="{{ url_for('static', filename='Logo.png') }}" alt="Logo" />
+        <span class="parent-label">Stories &amp; Stanza</span>
+      </div>
+      <div class="app-name">ClipCraft</div>
+      <span class="tag">Design System</span>
+    </div>
+    <nav class="ds-nav">
+      <span class="ds-nav-group">Foundations</span>
+      <a href="#colours">Colour Palette</a>
+      <a href="#typography">Typography</a>
+      <a href="#spacing">Spacing &amp; Radius</a>
+      <span class="ds-nav-group">Components</span>
+      <a href="#buttons">Buttons</a>
+      <a href="#badges">Badges &amp; Tags</a>
+      <a href="#inputs">Form Inputs</a>
+      <a href="#toggles">Toggle Switch</a>
+      <a href="#dropzones">Dropzones</a>
+      <a href="#cards">Cards</a>
+      <a href="#navigation">Navigation</a>
+      <a href="#progress">Progress</a>
+      <a href="#cues">Cue List</a>
+      <a href="#clips">Clip Cards</a>
+      <a href="#toasts">Toasts</a>
+    </nav>
+  </aside>
+
+  <!-- Design content -->
+  <main class="ds-main">
+
+    <!-- Hero -->
+    <div class="ds-hero">
+      <img src="{{ url_for('static', filename='Logo.png') }}" alt="ClipCraft" class="ds-hero-logo" />
+      <div>
+        <div class="ds-hero-title">ClipCraft Design System</div>
+        <div class="ds-hero-sub">Visual language reference for Stories &amp; Stanza · Dark navy theme · Inter typeface</div>
+      </div>
+    </div>
+
+    <!-- ── Colours ─────────────────────────────────────────── -->
+    <section class="ds-section" id="colours">
+      <div class="ds-section-title">Colour Palette</div>
+      <div class="ds-section-desc">All colours are defined as CSS custom properties on <code>:root</code> in <code>app.css</code>. Never hard-code hex values — always reference a token.</div>
+      <div class="swatch-grid">
+        <div class="swatch">
+          <div class="swatch-color" style="background:#080f18"></div>
+          <div class="swatch-info"><div class="swatch-name">Background</div><div class="swatch-value">--bg · #080f18</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#0d1724"></div>
+          <div class="swatch-info"><div class="swatch-name">Sidebar</div><div class="swatch-value">--sidebar-bg · #0d1724</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#111d2c"></div>
+          <div class="swatch-info"><div class="swatch-name">Surface</div><div class="swatch-value">--surface · #111d2c</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#162233"></div>
+          <div class="swatch-info"><div class="swatch-name">Surface 2</div><div class="swatch-value">--surface-2 · #162233</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:rgba(255,255,255,0.07)"></div>
+          <div class="swatch-info"><div class="swatch-name">Border</div><div class="swatch-value">--border · rgba(255,255,255,0.07)</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#4fc3f7"></div>
+          <div class="swatch-info"><div class="swatch-name">Accent</div><div class="swatch-value">--accent · #4fc3f7</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#2196f3"></div>
+          <div class="swatch-info"><div class="swatch-name">Accent Dark</div><div class="swatch-value">--accent-dark · #2196f3</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:rgba(79,195,247,0.12)"></div>
+          <div class="swatch-info"><div class="swatch-name">Accent Dim</div><div class="swatch-value">--accent-dim · rgba(79,195,247,0.12)</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#4caf91"></div>
+          <div class="swatch-info"><div class="swatch-name">Success</div><div class="swatch-value">--success · #4caf91</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#f25c5c"></div>
+          <div class="swatch-info"><div class="swatch-name">Danger</div><div class="swatch-value">--danger · #f25c5c</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#e8f4fb"></div>
+          <div class="swatch-info"><div class="swatch-name">Text</div><div class="swatch-value">--text · #e8f4fb</div></div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-color" style="background:#7a9ab0"></div>
+          <div class="swatch-info"><div class="swatch-name">Muted</div><div class="swatch-value">--muted · #7a9ab0</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Typography ──────────────────────────────────────── -->
+    <section class="ds-section" id="typography">
+      <div class="ds-section-title">Typography</div>
+      <div class="ds-section-desc">Typeface: <strong>Inter</strong> — weights 400 / 500 / 600 / 700. Base size 14px, line-height 1.5.</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px 28px;">
+        <div class="type-row">
+          <div class="type-meta"><strong>Section Title</strong>22px / 700<br/>ls -0.4px</div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.4px;">Upload Files</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><strong>Card Heading</strong>15px / 600</div>
+          <div style="font-size:15px;font-weight:600;">YouTube Connection</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><strong>Body / Label</strong>14px / 500</div>
+          <div style="font-size:14px;font-weight:500;">Max clips per session</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><strong>Body Small</strong>13px / 400</div>
+          <div style="font-size:13px;font-weight:400;color:var(--text);">Add your video, subtitle file, and an optional thumbnail image.</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><strong>Muted / Helper</strong>13px / 400<br/>color: --muted</div>
+          <div style="font-size:13px;color:var(--muted);">Your local timezone: Asia/Kolkata</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><strong>Label Caps</strong>11px / 700<br/>uppercase / ls 0.8px</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);">Max duration (s)</div>
+        </div>
+        <div class="type-row">
+          <div class="type-meta"><strong>Micro</strong>11px / 600<br/>color: --accent</div>
+          <div style="font-size:11px;font-weight:600;color:var(--accent);">00:00:12 → 00:00:54</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Spacing & Radius ─────────────────────────────────── -->
+    <section class="ds-section" id="spacing">
+      <div class="ds-section-title">Spacing &amp; Border Radius</div>
+      <div class="ds-section-desc">Base spacing unit is 4px. The three named radius tokens cover interactive widgets, content cards, and large panels.</div>
+
+      <div class="comp-row-label">Spacing scale</div>
+      <div class="spacing-grid" style="margin-bottom:28px">
+        <div class="spacing-row"><div class="spacing-bar" style="width:4px"></div><span class="spacing-label">4px — xs</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:8px"></div><span class="spacing-label">8px — sm</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:12px"></div><span class="spacing-label">12px</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:16px"></div><span class="spacing-label">16px — md</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:20px"></div><span class="spacing-label">20px</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:24px"></div><span class="spacing-label">24px — lg</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:40px"></div><span class="spacing-label">40px — xl (section padding)</span></div>
+        <div class="spacing-row"><div class="spacing-bar" style="width:48px"></div><span class="spacing-label">48px — 2xl (section gap)</span></div>
+      </div>
+
+      <div class="comp-row-label">Border radius tokens</div>
+      <div class="radius-row">
+        <div class="radius-box" style="border-radius:6px;width:80px;height:60px;">
+          <span class="radius-label">--radius-sm</span>
+          <span style="font-size:11px">6px</span>
+        </div>
+        <div class="radius-box" style="border-radius:12px;width:100px;height:72px;">
+          <span class="radius-label">--radius</span>
+          <span style="font-size:11px">12px</span>
+        </div>
+        <div class="radius-box" style="border-radius:18px;width:120px;height:80px;">
+          <span class="radius-label">--radius-lg</span>
+          <span style="font-size:11px">18px</span>
+        </div>
+        <div class="radius-box" style="border-radius:999px;width:80px;height:36px;">
+          <span class="radius-label">pill</span>
+          <span style="font-size:11px">999px</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Buttons ──────────────────────────────────────────── -->
+    <section class="ds-section" id="buttons">
+      <div class="ds-section-title">Buttons</div>
+      <div class="ds-section-desc">All buttons share the <code>.btn</code> base class. Variant and size modifiers are applied additively.</div>
+
+      <div class="comp-row-label">Variants</div>
+      <div class="comp-row">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn">Default</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-danger">Danger</button>
+        <button class="btn" disabled>Disabled</button>
+      </div>
+
+      <div class="comp-row-label">Sizes</div>
+      <div class="comp-row">
+        <button class="btn btn-primary btn-lg">Large</button>
+        <button class="btn btn-primary">Default</button>
+        <button class="btn btn-primary btn-sm">Small</button>
+      </div>
+
+      <div class="comp-row-label">With icon</div>
+      <div class="comp-row">
+        <button class="btn btn-primary"><span class="btn-icon">⬆</span> Upload Files</button>
+        <button class="btn"><span class="btn-icon">◫</span> View Gallery</button>
+        <button class="btn btn-ghost"><span class="btn-icon">↺</span> Refresh</button>
+        <button class="btn btn-ghost btn-sm">Open in YouTube Studio ↗</button>
+      </div>
+    </section>
+
+    <!-- ── Badges ──────────────────────────────────────────── -->
+    <section class="ds-section" id="badges">
+      <div class="ds-section-title">Badges &amp; Tags</div>
+      <div class="ds-section-desc">Used for step indicators, status labels, counts, and optional flags.</div>
+
+      <div class="comp-row-label">Section badge (step indicator)</div>
+      <div class="comp-row">
+        <span class="section-badge">Step 1</span>
+        <span class="section-badge">Step 2</span>
+        <span class="section-badge">Step 3</span>
+        <span class="section-badge">Step 4</span>
+        <span class="section-badge">YouTube</span>
+      </div>
+
+      <div class="comp-row-label">Pill badges</div>
+      <div class="comp-row badge-demos">
+        <span class="ds-badge">Accent</span>
+        <span class="ds-badge muted">3 cues</span>
+        <span class="ds-badge success">Done ✓</span>
+        <span class="ds-badge danger">Error</span>
+        <span class="cue-count-badge">12</span>
+        <span class="filename-badge">video.mp4</span>
+        <span class="optional-tag">optional</span>
+      </div>
+
+      <div class="comp-row-label" style="margin-top:12px">Status text states</div>
+      <div class="comp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <span class="status-text">Processing clip 2 of 3…</span>
+        <span class="status-text success">Upload complete ✓</span>
+        <span class="status-text error">Upload failed: quota exceeded</span>
+      </div>
+    </section>
+
+    <!-- ── Form Inputs ──────────────────────────────────────── -->
+    <section class="ds-section" id="inputs">
+      <div class="ds-section-title">Form Inputs</div>
+      <div class="ds-section-desc">Text inputs, number fields, and select elements share a consistent dark surface style with accent focus ring.</div>
+      <div class="comp-row">
+        <div class="input-demo">
+          <div class="input-row">
+            <div class="input-field">
+              <label>Max clips</label>
+              <input class="settings-input demo-input" type="number" value="3" />
+            </div>
+            <div class="input-field">
+              <label>Auto window (s)</label>
+              <input class="settings-input demo-input" type="number" value="45" />
+            </div>
+            <div class="input-field">
+              <label>Min duration (s)</label>
+              <input class="settings-input demo-input" type="number" value="30" />
+            </div>
+            <div class="input-field">
+              <label>Max duration (s)</label>
+              <input class="settings-input demo-input" type="number" placeholder="—" />
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field" style="flex:1;max-width:320px">
+              <label>Video title</label>
+              <input class="demo-input" style="width:100%" type="text" placeholder="Episode 1 highlights…" />
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-field">
+              <label>Description</label>
+              <textarea class="demo-textarea" placeholder="Shared description for all clips…"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Toggle ──────────────────────────────────────────── -->
+    <section class="ds-section" id="toggles">
+      <div class="ds-section-title">Toggle Switch</div>
+      <div class="ds-section-desc">Used in the settings bar for boolean options. Built with a hidden checkbox and CSS-driven thumb animation.</div>
+      <div class="comp-row" style="gap:24px;">
+        <label class="toggle-label">
+          <input class="toggle-input" type="checkbox" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-text">Off state</span>
+        </label>
+        <label class="toggle-label">
+          <input class="toggle-input" type="checkbox" checked />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-text">On state</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ── Dropzones ───────────────────────────────────────── -->
+    <section class="ds-section" id="dropzones">
+      <div class="ds-section-title">Dropzones</div>
+      <div class="ds-section-desc">Three states: default, hover/drag-over (dashed cyan border), and filled (solid with accent tint). Optional dropzones carry the <code>.optional</code> modifier.</div>
+      <div class="dropzone-demos">
+        <div class="dropzone">
+          <span class="dropzone-icon">🎬</span>
+          <span class="dropzone-label">Video</span>
+          <span class="dropzone-hint">MP4, MOV, MKV…</span>
+        </div>
+        <div class="dropzone drag-over">
+          <span class="dropzone-icon">📄</span>
+          <span class="dropzone-label">Subtitles</span>
+          <span class="dropzone-hint">SRT or TXT</span>
+        </div>
+        <div class="dropzone filled optional">
+          <span class="dropzone-icon">🖼</span>
+          <span class="dropzone-label">Thumbnail</span>
+          <span class="optional-tag">optional</span>
+          <span class="dropzone-filename">cover.png</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Cards ───────────────────────────────────────────── -->
+    <section class="ds-section" id="cards">
+      <div class="ds-section-title">Cards</div>
+      <div class="ds-section-desc">Two surface levels. <code>--surface</code> for primary panels; <code>--surface-2</code> for elevated or nested panels inside a surface card.</div>
+      <div class="card-grid">
+        <div class="ds-card">
+          <div class="ds-card-tag">Surface · --surface</div>
+          <div class="ds-card-title">YouTube Connection</div>
+          <div class="ds-card-body">Used for main content panels, settings bars, progress cards, and the cue list container.</div>
+        </div>
+        <div class="ds-card elevated">
+          <div class="ds-card-tag">Elevated · --surface-2</div>
+          <div class="ds-card-title">Scheduling Options</div>
+          <div class="ds-card-body">Used inside a surface card — e.g. the schedule radio card, settings inputs, panel headers.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Navigation ──────────────────────────────────────── -->
+    <section class="ds-section" id="navigation">
+      <div class="ds-section-title">Navigation</div>
+      <div class="ds-section-desc">Sidebar nav items have three states: default, hover (subtle white tint), and active (accent-dim background + accent text).</div>
+      <div class="comp-row" style="max-width:240px;flex-direction:column;padding:12px;">
+        <div class="nav-demo">
+          <a class="nav-item active" href="#"><span class="nav-icon">⬆</span> Upload</a>
+          <a class="nav-item" href="#"><span class="nav-icon">☰</span> Cues</a>
+          <a class="nav-item" style="background:rgba(255,255,255,0.04);color:var(--text)" href="#"><span class="nav-icon">◫</span> Gallery (hover)</a>
+          <a class="nav-item" href="#"><span class="nav-icon">▶</span> YouTube</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Progress ────────────────────────────────────────── -->
+    <section class="ds-section" id="progress">
+      <div class="ds-section-title">Progress</div>
+      <div class="ds-section-desc">Used for clip generation jobs and per-clip YouTube upload rows. The bar fills via inline <code>width</code> driven by JS polling.</div>
+
+      <div class="comp-row-label">Job progress card</div>
+      <div class="progress-card" style="margin-bottom:16px">
+        <div class="progress-header">
+          <span class="progress-label">Generating clips…</span>
+          <span class="status-text" style="text-align:right">2 / 3</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:66%"></div>
+        </div>
+      </div>
+
+      <div class="comp-row-label">YouTube upload queue rows</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px;">
+        <div class="yt-queue-row">
+          <div class="yt-queue-row-header">
+            <span class="yt-queue-clip-name">Episode 1 — Opening</span>
+            <span class="yt-queue-state done">Done ✓</span>
+          </div>
+          <div class="yt-queue-bar-wrap"><div class="yt-queue-bar" style="width:100%"></div></div>
+        </div>
+        <div class="yt-queue-row">
+          <div class="yt-queue-row-header">
+            <span class="yt-queue-clip-name">Episode 1 — Key Moment</span>
+            <span class="yt-queue-state uploading">Uploading…</span>
+          </div>
+          <div class="yt-queue-bar-wrap"><div class="yt-queue-bar" style="width:48%"></div></div>
+        </div>
+        <div class="yt-queue-row">
+          <div class="yt-queue-row-header">
+            <span class="yt-queue-clip-name">Episode 1 — Closing</span>
+            <span class="yt-queue-state queued">Queued</span>
+          </div>
+          <div class="yt-queue-bar-wrap"><div class="yt-queue-bar" style="width:0%"></div></div>
+        </div>
+        <div class="yt-queue-row">
+          <div class="yt-queue-row-header">
+            <span class="yt-queue-clip-name">Episode 2 — Highlight</span>
+            <span class="yt-queue-state error">Error</span>
+          </div>
+          <div class="yt-queue-bar-wrap"><div class="yt-queue-bar" style="width:30%"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Cue list ─────────────────────────────────────────── -->
+    <section class="ds-section" id="cues">
+      <div class="ds-section-title">Cue List</div>
+      <div class="ds-section-desc">Each SRT cue is rendered as a checkable list item. Selected items receive the <code>--accent-dim</code> background tint.</div>
+      <div class="cue-panel">
+        <div class="cue-panel-header">
+          <span class="cue-count-label">Cues <span class="cue-count-badge">4</span></span>
+          <div class="cue-actions">
+            <button class="btn btn-ghost btn-sm">Select all</button>
+            <button class="btn btn-ghost btn-sm">Clear</button>
+          </div>
+        </div>
+        <ul class="cue-list">
+          <li class="cue-item selected">
+            <input type="checkbox" checked />
+            <label>
+              <div class="cue-timestamp">00:00:00 → 00:00:18</div>
+              <div class="cue-text">Welcome back to another episode. Today we're diving into the world of short-form content.</div>
+            </label>
+          </li>
+          <li class="cue-item">
+            <input type="checkbox" />
+            <label>
+              <div class="cue-timestamp">00:00:20 → 00:00:54</div>
+              <div class="cue-text">The key thing to remember about vertical video is that your subject needs to fill the frame.</div>
+            </label>
+          </li>
+          <li class="cue-item">
+            <input type="checkbox" />
+            <label>
+              <div class="cue-timestamp">00:01:02 → 00:01:31</div>
+              <div class="cue-text">Let's look at some examples of successful reels and break down what makes them work.</div>
+            </label>
+          </li>
+          <li class="cue-item">
+            <input type="checkbox" />
+            <label>
+              <div class="cue-timestamp">00:01:45 → 00:02:10</div>
+              <div class="cue-text">And that's a wrap! Hit subscribe if you found this useful, and I'll see you in the next one.</div>
+            </label>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── Clip cards ───────────────────────────────────────── -->
+    <section class="ds-section" id="clips">
+      <div class="ds-section-title">Clip Cards</div>
+      <div class="ds-section-desc">9:16 aspect-ratio cards used in the gallery grid and the YouTube clip selector. The gallery card has a hover play overlay; the YouTube selector card adds a selection check indicator.</div>
+
+      <div class="comp-row-label">Gallery clip card</div>
+      <div class="comp-row" style="align-items:flex-start;">
+        <div class="clip-card clip-card-demo">
+          <div class="clip-thumb-wrap" style="background:linear-gradient(135deg,#0d1724,#162233);">
+            <div class="clip-play-overlay" style="opacity:0.5;font-size:28px;">▶</div>
+          </div>
+          <div class="clip-info">
+            <div class="clip-name">Silvia_seg68_clip-8fa5.mp4</div>
+            <a href="#" class="btn btn-sm btn-ghost" style="width:100%;justify-content:center">Open ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp-row-label" style="margin-top:16px">YouTube clip selector card (unselected / selected)</div>
+      <div class="comp-row" style="align-items:flex-start;gap:16px;">
+        <div class="yt-clip-card" style="width:150px;">
+          <div class="yt-clip-thumb-wrap" style="background:linear-gradient(135deg,#0d1724,#162233);">
+            <span class="yt-clip-play">▶</span>
+            <span class="yt-select-check">✓</span>
+          </div>
+          <span class="yt-clip-label">clip-a1b2.mp4</span>
+        </div>
+        <div class="yt-clip-card selected" style="width:150px;">
+          <div class="yt-clip-thumb-wrap" style="background:linear-gradient(135deg,#0d1724,#162233);">
+            <span class="yt-clip-play">▶</span>
+            <span class="yt-select-check" style="background:var(--danger);border-color:var(--danger);color:#fff">✓</span>
+          </div>
+          <span class="yt-clip-label">clip-c3d4.mp4</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Toasts ───────────────────────────────────────────── -->
+    <section class="ds-section" id="toasts">
+      <div class="ds-section-title">Toasts</div>
+      <div class="ds-section-desc">Bottom-right notification stack. Three states — neutral, success (green border), and error (red border). Auto-dismiss after 3.5 s via JS.</div>
+      <div class="toast-demos">
+        <div class="toast-demo">Clip generation started…</div>
+        <div class="toast-demo success">3 clips uploaded to YouTube!</div>
+        <div class="toast-demo error">Upload failed: quota exceeded</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>

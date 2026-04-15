@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Audio Clip Generator — Stories and Stanza</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    .clip-results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .clip-result-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .clip-result-row .clip-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      min-width: 28px;
+    }
+    .clip-result-row .clip-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .audio-info-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .audio-info-row span { display: flex; align-items: center; gap: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-parent">
+        <img src="{{ url_for('static', filename='Logo.png') }}" alt="Stories and Stanza" class="brand-logo" />
+        <span class="brand-parent-name">Stories &amp; Stanza</span>
+      </div>
+      <div class="brand-divider"></div>
+      <div class="brand-clip">
+        <span class="brand-icon">✦</span>
+        <span class="brand-name">ClipCraft</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Tools</div>
+      <a class="nav-item" href="/">
+        <span class="nav-icon">⬆</span> Clip Generator
+      </a>
+      <a class="nav-item" href="/convert">
+        <span class="nav-icon">⬛</span> Portrait Converter
+      </a>
+      <a class="nav-item active" href="/audioclips">
+        <span class="nav-icon">🎵</span> Audio Clip Generator
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-status" id="sidebarStatus"></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- Step 1: Upload -->
+    <section class="step-section" id="stepUpload">
+      <div class="section-header">
+        <div class="section-badge">Step 1</div>
+        <h2 class="section-title">Upload Files</h2>
+        <p class="section-desc">Upload a background image and an audio file. The image will be used as a static background for each clip.</p>
+      </div>
+
+      <div class="upload-grid" style="grid-template-columns: 1fr 1fr;">
+        <label class="dropzone" id="dropzoneImage" for="imageInput">
+          <div class="dropzone-icon">🖼️</div>
+          <div class="dropzone-label">Background Image</div>
+          <div class="dropzone-hint">PNG, JPG, JPEG, WEBP</div>
+          <input id="imageInput" type="file" accept="image/*" class="file-input" />
+          <div id="imageNameDisplay" class="dropzone-filename hidden"></div>
+        </label>
+
+        <label class="dropzone" id="dropzoneAudio" for="audioInput">
+          <div class="dropzone-icon">🎧</div>
+          <div class="dropzone-label">Audio File</div>
+          <div class="dropzone-hint">MP3, WAV, M4A, AAC, OGG</div>
+          <input id="audioInput" type="file" accept="audio/*" class="file-input" />
+          <div id="audioNameDisplay" class="dropzone-filename hidden"></div>
+        </label>
+      </div>
+
+      <div class="upload-actions">
+        <button id="uploadBtn" class="btn btn-primary" disabled>
+          <span class="btn-icon">⬆</span> Upload
+        </button>
+        <div id="uploadStatus" class="status-text"></div>
+      </div>
+    </section>
+
+    <!-- Step 2: Settings -->
+    <section class="step-section hidden" id="stepSettings">
+      <div class="section-header">
+        <div class="section-badge">Step 2</div>
+        <h2 class="section-title">Configure Clips <span class="filename-badge" id="audioNameShort"></span></h2>
+        <p class="section-desc">Set how many clips to generate, how long each clip should be, and where in the audio to start.</p>
+      </div>
+
+      <div id="audioDurationBanner" class="audio-info-row" style="margin-bottom:16px;"></div>
+
+      <div class="settings-bar">
+        <div class="settings-group">
+          <label class="settings-label" for="numClips">Number of clips</label>
+          <input id="numClips" type="number" min="1" max="50" value="3"
+                 class="settings-input" style="width:100px;" />
+        </div>
+        <div class="settings-group">
+          <label class="settings-label" for="clipDuration">Clip duration (seconds)</label>
+          <input id="clipDuration" type="number" min="5" max="600" value="60"
+                 class="settings-input" style="width:100px;" />
+        </div>
+        <div class="settings-group">
+          <label class="settings-label" for="startOffset">Start offset (seconds)</label>
+          <input id="startOffset" type="number" min="0" value="0"
+                 class="settings-input" style="width:100px;" />
+        </div>
+      </div>
+
+      <div id="clipPreviewInfo" class="audio-info-row" style="margin-top:16px;"></div>
+
+      <div class="create-bar" style="margin-top:24px;">
+        <button id="generateBtn" class="btn btn-primary btn-lg">
+          <span class="btn-icon">⚡</span> Generate Clips
+        </button>
+        <div id="generateStatus" class="status-text"></div>
+      </div>
+    </section>
+
+    <!-- Step 3: Progress -->
+    <section class="step-section hidden" id="stepProgress">
+      <div class="section-header">
+        <div class="section-badge">Processing</div>
+        <h2 class="section-title">Generating Clips</h2>
+        <p class="section-desc">Please wait — clips are being rendered one by one.</p>
+      </div>
+      <div class="progress-card">
+        <div class="progress-header">
+          <span id="progressText" class="progress-label">Starting…</span>
+          <span id="progressCount" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill" style="width:0%; transition: width 0.4s;"></div>
+        </div>
+        <div id="progressDetail" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
+      </div>
+
+      <!-- Live clip list as they complete -->
+      <div id="liveClipList" class="clip-results-list" style="margin-top:20px;"></div>
+    </section>
+
+    <!-- Step 4: Results -->
+    <section class="step-section hidden" id="stepResult">
+      <div class="section-header">
+        <div class="section-badge">Done</div>
+        <h2 class="section-title">Clips Ready</h2>
+        <p class="section-desc">Your audio clips have been rendered. Download them individually below.</p>
+      </div>
+
+      <div id="resultClipList" class="clip-results-list"></div>
+
+      <div id="errorList" class="clip-log" style="margin-top:16px;" role="list"></div>
+
+      <div style="margin-top:24px;">
+        <button id="generateAnotherBtn" class="btn btn-ghost">Generate more clips</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  function showSection(id) {
+    ['stepUpload','stepSettings','stepProgress','stepResult'].forEach(s => {
+      $(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    $('toastContainer').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  function fmtSeconds(s) {
+    s = Math.round(s);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  }
+
+  /* ── state ── */
+  let uploadedImage = null;
+  let uploadedAudio = null;
+  let audioDuration = null;
+  let pollTimer = null;
+
+  /* ── enable upload button when both files chosen ── */
+  function checkUploadReady() {
+    $('uploadBtn').disabled = !($('imageInput').files[0] && $('audioInput').files[0]);
+  }
+
+  $('imageInput').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    $('dropzoneImage').classList.add('filled');
+    $('imageNameDisplay').textContent = f.name;
+    $('imageNameDisplay').classList.remove('hidden');
+    checkUploadReady();
+  });
+
+  $('audioInput').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    $('dropzoneAudio').classList.add('filled');
+    $('audioNameDisplay').textContent = f.name;
+    $('audioNameDisplay').classList.remove('hidden');
+    // try to read duration from the browser
+    const url = URL.createObjectURL(f);
+    const tmpAudio = new Audio(url);
+    tmpAudio.addEventListener('loadedmetadata', () => {
+      audioDuration = tmpAudio.duration;
+      URL.revokeObjectURL(url);
+      updateClipPreview();
+    });
+    checkUploadReady();
+  });
+
+  /* drag-and-drop for image dropzone */
+  const dzImg = $('dropzoneImage');
+  dzImg.addEventListener('dragover', e => { e.preventDefault(); dzImg.classList.add('drag-over'); });
+  dzImg.addEventListener('dragleave', () => dzImg.classList.remove('drag-over'));
+  dzImg.addEventListener('drop', e => {
+    e.preventDefault();
+    dzImg.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    $('imageInput').files = e.dataTransfer.files;
+    $('imageInput').dispatchEvent(new Event('change'));
+  });
+
+  /* drag-and-drop for audio dropzone */
+  const dzAud = $('dropzoneAudio');
+  dzAud.addEventListener('dragover', e => { e.preventDefault(); dzAud.classList.add('drag-over'); });
+  dzAud.addEventListener('dragleave', () => dzAud.classList.remove('drag-over'));
+  dzAud.addEventListener('drop', e => {
+    e.preventDefault();
+    dzAud.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    $('audioInput').files = e.dataTransfer.files;
+    $('audioInput').dispatchEvent(new Event('change'));
+  });
+
+  /* ── upload ── */
+  $('uploadBtn').addEventListener('click', async () => {
+    const imgFile = $('imageInput').files[0];
+    const audFile = $('audioInput').files[0];
+    if (!imgFile || !audFile) return;
+    $('uploadBtn').disabled = true;
+    $('uploadStatus').textContent = 'Uploading…';
+    $('uploadStatus').className = 'status-text';
+    const fd = new FormData();
+    fd.append('image', imgFile);
+    fd.append('audio', audFile);
+    try {
+      const res = await fetch('/audioclips/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      uploadedImage = data.image;
+      uploadedAudio = data.audio;
+      $('audioNameShort').textContent = data.audio_name || data.audio;
+      $('uploadStatus').textContent = '';
+      // show audio duration in settings
+      if (audioDuration && isFinite(audioDuration)) {
+        $('audioDurationBanner').innerHTML =
+          `<span>🎵 Audio duration: <strong>${fmtSeconds(audioDuration)}</strong></span>`;
+      } else {
+        $('audioDurationBanner').innerHTML = '';
+      }
+      updateClipPreview();
+      showSection('stepSettings');
+    } catch (err) {
+      $('uploadStatus').textContent = 'Error: ' + err.message;
+      $('uploadStatus').className = 'status-text error';
+      $('uploadBtn').disabled = false;
+    }
+  });
+
+  /* ── clip preview info ── */
+  function updateClipPreview() {
+    const n = parseInt($('numClips') ? $('numClips').value : 3) || 3;
+    const d = parseInt($('clipDuration') ? $('clipDuration').value : 60) || 60;
+    const s = parseInt($('startOffset') ? $('startOffset').value : 0) || 0;
+    const end = s + n * d;
+    let html = `<span>📋 ${n} clip${n !== 1 ? 's' : ''} × ${fmtSeconds(d)} each</span>`;
+    html += `<span>⏱ Spans ${fmtSeconds(s)} → ${fmtSeconds(end)}</span>`;
+    if (audioDuration && isFinite(audioDuration) && end > audioDuration) {
+      const actual = Math.floor((audioDuration - s) / d);
+      html += `<span style="color:var(--accent);">⚠ Audio ends at ${fmtSeconds(audioDuration)} — up to ${actual} full clip${actual !== 1 ? 's' : ''}</span>`;
+    }
+    $('clipPreviewInfo').innerHTML = html;
+  }
+
+  ['numClips','clipDuration','startOffset'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('input', updateClipPreview);
+  });
+
+  /* ── generate ── */
+  $('generateBtn').addEventListener('click', async () => {
+    if (!uploadedImage || !uploadedAudio) return;
+    $('generateBtn').disabled = true;
+    $('generateStatus').textContent = '';
+    $('liveClipList').innerHTML = '';
+    showSection('stepProgress');
+    $('progressFill').style.width = '0%';
+    $('progressText').textContent = 'Starting…';
+
+    const numClips = parseInt($('numClips').value) || 3;
+    const clipDuration = parseInt($('clipDuration').value) || 60;
+    const startOffset = parseInt($('startOffset').value) || 0;
+
+    try {
+      const res = await fetch('/audioclips/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: uploadedImage,
+          audio: uploadedAudio,
+          num_clips: numClips,
+          clip_duration: clipDuration,
+          start_offset: startOffset,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start');
+      startPolling(data.job_id, numClips);
+    } catch (err) {
+      toast('Error: ' + err.message, 'error');
+      showSection('stepSettings');
+      $('generateBtn').disabled = false;
+    }
+  });
+
+  /* ── polling ── */
+  let lastClipCount = 0;
+  function startPolling(jobId, numClips) {
+    lastClipCount = 0;
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`/progress/${jobId}`);
+        if (!res.ok) return;
+        const p = await res.json();
+
+        const done = (p.clips || []).length;
+        const pct = numClips > 0 ? Math.round(done / numClips * 100) : (p.percent || 0);
+        $('progressFill').style.width = Math.min(pct, 98) + '%';
+        $('progressText').textContent = p.finished ? 'Done!' : `Clip ${done} of ${numClips}…`;
+        $('progressCount').textContent = `${done}/${numClips}`;
+
+        // add newly completed clips to live list
+        const clips = p.clips || [];
+        for (let i = lastClipCount; i < clips.length; i++) {
+          const name = clips[i].clip;
+          const row = document.createElement('div');
+          row.className = 'clip-result-row';
+          row.innerHTML = `<span class="clip-num">#${i + 1}</span>
+            <span class="clip-name">${name}</span>
+            <a href="/clips/${encodeURIComponent(name)}" class="btn btn-primary" download="${name}" style="flex-shrink:0;">
+              <span class="btn-icon">⬇</span> Download
+            </a>`;
+          $('liveClipList').appendChild(row);
+        }
+        lastClipCount = clips.length;
+
+        if (p.finished) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          $('progressFill').style.width = '100%';
+          if (p.status === 'cancelled') {
+            toast('Job cancelled', 'error');
+            showSection('stepSettings');
+            $('generateBtn').disabled = false;
+            return;
+          }
+          // build final result list
+          $('resultClipList').innerHTML = '';
+          (p.clips || []).forEach((c, i) => {
+            const name = c.clip;
+            const row = document.createElement('div');
+            row.className = 'clip-result-row';
+            row.innerHTML = `<span class="clip-num">#${i + 1}</span>
+              <span class="clip-name">${name}</span>
+              <a href="/clips/${encodeURIComponent(name)}" class="btn btn-primary" download="${name}" style="flex-shrink:0;">
+                <span class="btn-icon">⬇</span> Download
+              </a>`;
+            $('resultClipList').appendChild(row);
+          });
+          $('errorList').innerHTML = '';
+          (p.errors || []).forEach(e => {
+            const li = document.createElement('li');
+            li.className = 'error';
+            li.textContent = `Clip ${e.clip_index}: ${e.error}`;
+            $('errorList').appendChild(li);
+          });
+          showSection('stepResult');
+          toast(`${(p.clips || []).length} clip${(p.clips || []).length !== 1 ? 's' : ''} ready!`, 'success');
+        }
+      } catch (_) {}
+    }, 1500);
+  }
+
+  /* ── generate another ── */
+  $('generateAnotherBtn').addEventListener('click', () => {
+    uploadedImage = null;
+    uploadedAudio = null;
+    $('imageInput').value = '';
+    $('audioInput').value = '';
+    $('imageNameDisplay').textContent = '';
+    $('imageNameDisplay').classList.add('hidden');
+    $('audioNameDisplay').textContent = '';
+    $('audioNameDisplay').classList.add('hidden');
+    $('dropzoneImage').classList.remove('filled');
+    $('dropzoneAudio').classList.remove('filled');
+    $('uploadBtn').disabled = true;
+    $('progressFill').style.width = '0%';
+    $('generateBtn').disabled = false;
+    audioDuration = null;
+    showSection('stepUpload');
+  });
+</script>
+</body>
+</html>
