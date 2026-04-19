@@ -1,8 +1,11 @@
 # moviepy_worker.py
 import os
+import math
 import tempfile
 import traceback
+import numpy as np
 from moviepy.editor import VideoFileClip, CompositeVideoClip, ImageClip, concatenate_videoclips, AudioFileClip
+from moviepy.video.VideoClip import VideoClip
 from PIL import Image, ImageDraw, ImageFont
 
 def _choose_font(font_path, fontsize):
@@ -237,6 +240,102 @@ def _create_word_timed_subtitle_clips_for_cue(full_text, cue_start_abs, cue_end_
 
     return None, overlay_clips, tmp_pngs
 
+
+# ── Animated border overlay ────────────────────────────────────────────────
+# Renders a thin glowing border that cycles through a colour palette,
+# using a pure-numpy VideoClip so no temp files are needed.
+_BORDER_PALETTE = [
+    (79, 195, 247),    # cyan
+    (156, 39, 176),    # purple
+    (240, 98, 146),    # pink
+    (255, 209, 102),   # gold
+    (79, 195, 247),    # back to cyan for smooth loop
+]
+
+def _lerp_color(c1, c2, t):
+    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(3))
+
+def _border_color_at(t, period=4.0):
+    """Return (R, G, B) cycling smoothly through _BORDER_PALETTE every `period` seconds."""
+    steps = len(_BORDER_PALETTE) - 1
+    pos = (t % period) / period * steps
+    idx = int(pos)
+    frac = pos - idx
+    idx = min(idx, steps - 1)
+    return _lerp_color(_BORDER_PALETTE[idx], _BORDER_PALETTE[idx + 1], frac)
+
+def _make_border_clip(duration, target_w, target_h, border=18, fps=24):
+    """Return a VideoClip of an animated glowing border (RGBA→RGB for MoviePy)."""
+    def make_frame(t):
+        r, g, b = _border_color_at(t)
+        # Glow: draw 3 concentric rectangles with decreasing opacity for a soft halo
+        img = Image.new("RGBA", (target_w, target_h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        layers = [
+            (border + 10, (r, g, b, 40)),
+            (border + 4,  (r, g, b, 100)),
+            (border,      (r, g, b, 220)),
+        ]
+        for thick, color in layers:
+            draw.rectangle([0, 0, target_w - 1, target_h - 1], outline=color, width=thick)
+        # Convert to RGB with black background so MoviePy can handle it
+        bg = Image.new("RGB", (target_w, target_h), (0, 0, 0))
+        bg.paste(img, mask=img.split()[3])
+        arr = np.array(bg, dtype=np.uint8)
+        return arr
+
+    clip = VideoClip(make_frame, duration=duration).set_fps(fps)
+    # Make it transparent over the video by using a mask
+    def make_mask(t):
+        r, g, b = _border_color_at(t)
+        img = Image.new("L", (target_w, target_h), 0)
+        draw = ImageDraw.Draw(img)
+        layers = [border + 10, border + 4, border]
+        alphas = [40, 100, 220]
+        for thick, alpha in zip(layers, alphas):
+            draw.rectangle([0, 0, target_w - 1, target_h - 1],
+                           outline=alpha, width=thick)
+        return np.array(img, dtype=np.uint8) / 255.0
+
+    from moviepy.video.VideoClip import VideoClip as VC
+    mask_clip = VC(make_mask, duration=duration, ismask=True).set_fps(fps)
+    return clip.set_mask(mask_clip)
+
+
+# ── Logo corner overlay ────────────────────────────────────────────────────
+def _make_logo_clip(logo_path, duration, target_w, target_h,
+                   size=120, margin=32, fps=24):
+    """Return a static ImageClip of the logo in the top-right corner."""
+    try:
+        with Image.open(logo_path) as im:
+            im = im.convert("RGBA")
+            # Maintain aspect ratio within size×size box
+            im.thumbnail((size, size), Image.LANCZOS)
+            # Add a subtle dark rounded background pill
+            pad = 10
+            bg = Image.new("RGBA", (im.width + pad * 2, im.height + pad * 2), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(bg)
+            try:
+                draw.rounded_rectangle([0, 0, bg.width - 1, bg.height - 1],
+                                        radius=16, fill=(0, 0, 0, 140))
+            except Exception:
+                draw.rectangle([0, 0, bg.width - 1, bg.height - 1], fill=(0, 0, 0, 140))
+            bg.paste(im, (pad, pad), mask=im.split()[3])
+            fd, tmp = tempfile.mkstemp(suffix=".png")
+            os.close(fd)
+            bg.save(tmp, format="PNG")
+        x_pos = target_w - bg.width - margin
+        y_pos = margin
+        logo_clip = (ImageClip(tmp)
+                     .set_duration(duration)
+                     .set_position((x_pos, y_pos))
+                     .set_fps(fps))
+        return logo_clip, tmp
+    except Exception as exc:
+        print(f"[logo overlay] failed to load logo: {exc}")
+        return None, None
+
+
 def make_portrait_clip_two_speakers(video_path, cue, out_path,
                                    target_w=1080, target_h=1920,
                                    split_x_ratio=0.5,
@@ -334,6 +433,29 @@ def make_portrait_clip_two_speakers(video_path, cue, out_path,
             # Force composed to target size and fps
             fps_val = getattr(composed, "fps", None) or 24
             composed = composed.set_fps(fps_val).resize((target_w, target_h))
+
+            # ── Logo overlay ──────────────────────────────────────────
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            logo_path = os.path.join(BASE_DIR, "static", "Logo.png")
+            logo_clip, logo_tmp = _make_logo_clip(logo_path, sub.duration, target_w, target_h, fps=fps_val)
+            if logo_tmp:
+                tmp_files.append(logo_tmp)
+
+            # ── Animated border overlay ────────────────────────────────
+            border_clip = _make_border_clip(sub.duration, target_w, target_h, fps=fps_val)
+
+            extra_layers = []
+            if logo_clip is not None:
+                extra_layers.append(logo_clip)
+            extra_layers.append(border_clip)
+
+            if extra_layers:
+                composed = CompositeVideoClip([composed] + extra_layers, size=(target_w, target_h))
+                try:
+                    composed = composed.set_audio(sub.audio)
+                except Exception:
+                    pass
+                composed = composed.set_fps(fps_val).resize((target_w, target_h))
 
             # Ensure composed has an audio track matching its duration. MoviePy sometimes
             # leaves audio missing or shorter for long subclips; proactively attach audio

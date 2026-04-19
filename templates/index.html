@@ -11,6 +11,7 @@
 </head>
 <body>
 
+<div class="page-glow-border" aria-hidden="true"></div>
 <div class="toast-container" id="toastContainer"></div>
 
 <div class="app-layout">
@@ -62,6 +63,15 @@
 
   <!-- Main content -->
   <main class="main-content">
+
+    <!-- ── Brand banner ── -->
+    <div class="main-logo-banner">
+      <img src="{{ url_for('static', filename='Logo.png') }}" alt="Stories and Stanza" class="main-logo-img" />
+      <div class="main-logo-text">
+        <div class="main-logo-title">ClipCraft</div>
+        <div class="main-logo-subtitle">Stories &amp; Stanza — AI-powered social clip generator</div>
+      </div>
+    </div>
 
     <!-- ── Step 1: Upload ── -->
     <section class="step-section" id="step-upload">

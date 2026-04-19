@@ -75,6 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let selected            = new Set();
   let currentJob          = null;
   let pollTimer           = null;
+  let elapsedTimer        = null;
+  let jobStartTime        = null;
 
   /* ── Utils ────────────────────────────────────────────────── */
   function escapeHtml(s) {
@@ -303,6 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       currentJob = data.job_id;
+      jobStartTime = Date.now();
       showStep('job');
       if (clipStatus) clipStatus.innerHTML = '';
       if (progressFill) progressFill.style.width = '0%';
@@ -316,16 +319,56 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ── Polling ──────────────────────────────────────────────── */
+  function stopElapsedTimer() {
+    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+    // Remove elapsed badge if present
+    const badge = document.getElementById('elapsedBadge');
+    if (badge) badge.remove();
+  }
+
+  function startElapsedTimer() {
+    stopElapsedTimer();
+    // Insert an elapsed-time badge next to the progress label
+    let badge = document.getElementById('elapsedBadge');
+    if (!badge && progressText) {
+      badge = document.createElement('span');
+      badge.id = 'elapsedBadge';
+      badge.className = 'elapsed-badge';
+      progressText.parentNode.insertBefore(badge, progressText.nextSibling);
+    }
+    elapsedTimer = setInterval(() => {
+      if (!badge || !jobStartTime) return;
+      const secs = Math.floor((Date.now() - jobStartTime) / 1000);
+      const m = Math.floor(secs / 60).toString().padStart(2, '0');
+      const s = (secs % 60).toString().padStart(2, '0');
+      badge.textContent = `${m}:${s} elapsed`;
+    }, 1000);
+  }
+
   function startPolling(jobId) {
     if (pollTimer) clearInterval(pollTimer);
+    startElapsedTimer();
+    if (progressFill) progressFill.classList.add('indeterminate');
+
     pollTimer = setInterval(async () => {
       try {
         const res = await fetch(`/progress/${jobId}`);
         if (!res.ok) return;
         const p = await res.json();
 
-        if (progressFill) progressFill.style.width = (p.percent || 0) + '%';
-        if (progressText) progressText.textContent  = (p.percent || 0) + '%';
+        const pct = p.percent || 0;
+
+        // Switch between indeterminate (0% running) and determinate
+        if (progressFill) {
+          if (pct > 0 || p.finished) {
+            progressFill.classList.remove('indeterminate');
+            progressFill.style.width = pct + '%';
+          } else {
+            progressFill.classList.add('indeterminate');
+            progressFill.style.width = '';
+          }
+        }
+        if (progressText) progressText.textContent = pct > 0 ? pct + '%' : (p.status === 'running' ? 'Working…' : pct + '%');
 
         if (clipStatus) {
           clipStatus.innerHTML = '';
@@ -345,6 +388,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (p.finished) {
           clearInterval(pollTimer);
           pollTimer = null;
+          stopElapsedTimer();
+          if (progressFill) { progressFill.classList.remove('indeterminate'); progressFill.style.width = '100%'; }
+          if (progressText) progressText.textContent = '100%';
           loadGallery(p.clips || [], true);
           if (createBtn) createBtn.disabled = false;
           toast(`Done — ${(p.clips||[]).length} clip(s) ready.`, 'success');
@@ -356,6 +402,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cancelBtn) cancelBtn.addEventListener('click', async () => {
     if (currentJob) { try { await fetch(`/cancel/${currentJob}`, {method:'POST'}); } catch (_) {} }
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    stopElapsedTimer();
+    if (progressFill) { progressFill.classList.remove('indeterminate'); progressFill.style.width = '0%'; }
     if (createBtn) createBtn.disabled = false;
     showStep('cues');
     toast('Job cancelled.');

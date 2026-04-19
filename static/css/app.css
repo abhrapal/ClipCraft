@@ -898,6 +898,244 @@ option { background: var(--surface-2); }
   gap: 8px;
 }
 .yt-setup-steps li { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════════════
+   ✦  VISUAL ENHANCEMENT LAYER
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Animated page-border property  ──────────────────────────── */
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-rotate {
+  to { --border-angle: 360deg; }
+}
+
+/* Fixed rotating gradient border around the entire viewport */
+.page-glow-border {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
+  --border-angle: 0deg;
+  padding: 2px;
+  border-radius: 0;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 60%,
+    #4fc3f7aa 72%,
+    #9c27b0cc 82%,
+    #f06292cc 90%,
+    #ffd16699 96%,
+    transparent
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: border-rotate 5s linear infinite;
+}
+
+/* ── Subtle animated background grid ─────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(79,195,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,195,247,0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: grid-drift 20s linear infinite;
+}
+
+@keyframes grid-drift {
+  0%   { background-position: 0px 0px, 0px 0px; }
+  100% { background-position: 48px 48px, 48px 48px; }
+}
+
+/* ── Logo glow ring ───────────────────────────────────────────── */
+.brand-logo {
+  filter: drop-shadow(0 0 6px rgba(79,195,247,0.55));
+  transition: filter 0.3s;
+}
+.brand-logo:hover {
+  filter: drop-shadow(0 0 12px rgba(79,195,247,0.9));
+}
+
+/* Full-width logo banner shown at the top of main content */
+.main-logo-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 36px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(79,195,247,0.06), rgba(156,39,176,0.06));
+  border: 1px solid rgba(79,195,247,0.15);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+.main-logo-banner::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, #4fc3f720, #9c27b020, #f0629220, #ffd16620);
+  background-size: 300% 100%;
+  animation: banner-shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes banner-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+.main-logo-img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 10px;
+  filter: drop-shadow(0 0 10px rgba(79,195,247,0.6));
+  flex-shrink: 0;
+}
+.main-logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.main-logo-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #4fc3f7, #ce93d8, #f48fb1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.main-logo-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ── Section title gradient accent ───────────────────────────── */
+.section-title {
+  background: linear-gradient(90deg, var(--text) 60%, var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Generate Clips button — pulsing glow ────────────────────── */
+@keyframes btn-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,195,247,0); }
+  50%       { box-shadow: 0 0 18px 4px rgba(79,195,247,0.45), 0 4px 24px rgba(33,150,243,0.3); }
+}
+#createBtn:not(:disabled) {
+  animation: btn-glow-pulse 2.5s ease-in-out infinite;
+}
+#createBtn:not(:disabled):hover {
+  animation: none;
+  box-shadow: 0 0 22px 6px rgba(79,195,247,0.6), 0 4px 28px rgba(33,150,243,0.4);
+}
+
+/* ── Upload button glow ───────────────────────────────────────── */
+#uploadBtn {
+  transition: box-shadow 0.2s;
+}
+#uploadBtn:not(:disabled):hover {
+  box-shadow: 0 0 16px 3px rgba(79,195,247,0.4);
+}
+
+/* ── Progress bar shimmer ─────────────────────────────────────── */
+.progress-fill {
+  position: relative;
+  overflow: hidden;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: progress-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes progress-shimmer {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Indeterminate (0% working) state — scrolling stripe */
+.progress-fill.indeterminate {
+  width: 100% !important;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(79,195,247,0.15) 0px,
+    rgba(79,195,247,0.35) 20px,
+    rgba(33,150,243,0.35) 40px,
+    rgba(79,195,247,0.15) 60px
+  );
+  background-size: 120px 100%;
+  animation: indeterminate-slide 1.2s linear infinite;
+}
+.progress-fill.indeterminate::after { display: none; }
+
+@keyframes indeterminate-slide {
+  0%   { background-position: 0px 0; }
+  100% { background-position: 120px 0; }
+}
+
+/* Elapsed-time badge beside the progress label */
+.elapsed-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-left: 10px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+
+/* ── Enhanced clip card hover glow ───────────────────────────── */
+.clip-card {
+  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+.clip-card:hover {
+  transform: translateY(-4px) scale(1.015);
+  border-color: rgba(79,195,247,0.5);
+  box-shadow: 0 8px 32px rgba(79,195,247,0.2), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* ── Section card hover lift ──────────────────────────────────── */
+.progress-card, .cue-panel, .settings-bar {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.progress-card:hover, .cue-panel:hover, .settings-bar:hover {
+  border-color: rgba(79,195,247,0.2);
+  box-shadow: 0 4px 20px rgba(79,195,247,0.07);
+}
+
+/* ── Dropzone filled state glow ──────────────────────────────── */
+.dropzone.filled {
+  border-color: rgba(79,195,247,0.5);
+  background: rgba(79,195,247,0.07);
+  box-shadow: inset 0 0 20px rgba(79,195,247,0.05);
+}
+
+/* ── Step badge gradient ──────────────────────────────────────── */
+.section-badge {
+  background: linear-gradient(90deg, rgba(79,195,247,0.18), rgba(156,39,176,0.18));
+  border: 1px solid rgba(79,195,247,0.2);
+  color: var(--accent);
+}
 .yt-setup-steps strong { color: var(--text); }
 .yt-setup-steps code {
   background: rgba(255,255,255,0.07);
